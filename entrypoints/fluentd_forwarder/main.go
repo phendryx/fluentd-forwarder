@@ -4,7 +4,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	fluentd_forwarder "github.com/fluent/fluentd-forwarder"
+	fluentd_forwarder "github.com/phendryx/fluentd-forwarder"
 	strftime "github.com/jehiah/go-strftime"
 	ioextras "github.com/moriyoshi/go-ioextras"
 	logging "github.com/op/go-logging"
