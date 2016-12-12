@@ -41,6 +41,8 @@ type ForwardOutput struct {
 	retryInterval        time.Duration
 	connectionTimeout    time.Duration
 	writeTimeout         time.Duration
+	reconnectInterval    time.Duration
+	reconnect            bool
 	enc                  *codec.Encoder
 	conn                 net.Conn
 	flushInterval        time.Duration
@@ -129,9 +131,21 @@ func (output *ForwardOutput) spawnSpooler() {
 			output.wg.Done()
 		}()
 		output.logger.Notice("Spooler started")
-	outer:
+
+		reconnectTicker := time.NewTicker(output.reconnectInterval)
+		defer func() {
+			reconnectTicker.Stop()
+			output.logger.Notice("Stopped ticker...")
+			}()
+		outer:
 		for {
 			select {
+			case <-reconnectTicker.C:
+				if output.conn != nil {
+					output.logger.Noticef("Disconnecting from %s.", output.bind)
+					output.conn.Close()
+				}
+				output.conn = nil
 			case <-ticker.C:
 				buf := make([]byte, 16777216)
 				output.logger.Notice("Flushing...")
@@ -245,7 +259,7 @@ func (output *ForwardOutput) Start() {
 	syncCh <- struct{}{}
 }
 
-func NewForwardOutput(logger *logging.Logger, bind string, retryInterval time.Duration, connectionTimeout time.Duration, writeTimeout time.Duration, flushInterval time.Duration, journalGroupPath string, maxJournalChunkSize int64, metadata string) (*ForwardOutput, error) {
+func NewForwardOutput(logger *logging.Logger, bind string, retryInterval time.Duration, connectionTimeout time.Duration, writeTimeout time.Duration, flushInterval time.Duration, reconnectInterval time.Duration, journalGroupPath string, maxJournalChunkSize int64, metadata string) (*ForwardOutput, error) {
 	_codec := codec.MsgpackHandle{}
 	_codec.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	_codec.RawToString = false
@@ -266,6 +280,7 @@ func NewForwardOutput(logger *logging.Logger, bind string, retryInterval time.Du
 		retryInterval:        retryInterval,
 		connectionTimeout:    connectionTimeout,
 		writeTimeout:         writeTimeout,
+		reconnectInterval:    reconnectInterval,
 		wg:                   sync.WaitGroup{},
 		flushInterval:        flushInterval,
 		emitterChan:          make(chan FluentRecordSet),
@@ -274,6 +289,7 @@ func NewForwardOutput(logger *logging.Logger, bind string, retryInterval time.Du
 		completion:           sync.Cond{L: &sync.Mutex{}},
 		hasShutdownCompleted: false,
 		metadata:             metadata,
+		reconnect:			  false,
 	}
 	journalGroup, err := journalFactory.GetJournalGroup(journalGroupPath, output)
 	if err != nil {

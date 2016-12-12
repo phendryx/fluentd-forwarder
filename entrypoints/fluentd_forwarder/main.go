@@ -26,6 +26,7 @@ type FluentdForwarderParams struct {
 	ConnectionTimeout   time.Duration
 	WriteTimeout        time.Duration
 	FlushInterval       time.Duration
+	ReconnectInterval       time.Duration
 	Parallelism         int
 	JournalGroupPath    string
 	MaxJournalChunkSize int64
@@ -84,6 +85,7 @@ func updateFlagsByConfig(configFile string, flagSet *flag.FlagSet) error {
 			Conn_timeout       string `conn-timeout`
 			Write_timeout      string `write-timeout`
 			Flush_interval     string `flush-interval`
+			Reconnect_interval string `reconnect-interval`
 			Listen_on          string `listen-on`
 			To                 string `to`
 			Buffer_path        string `buffer-path`
@@ -120,6 +122,7 @@ func ParseArgs() *FluentdForwarderParams {
 	connectionTimeout := (time.Duration)(0)
 	writeTimeout := (time.Duration)(0)
 	flushInterval := (time.Duration)(0)
+	reconnectInterval := (time.Duration)(0)
 	parallelism := 0
 	listenOn := ""
 	forwardTo := ""
@@ -138,6 +141,7 @@ func ParseArgs() *FluentdForwarderParams {
 	flagSet.DurationVar(&connectionTimeout, "conn-timeout", MustParseDuration("10s"), "connection timeout")
 	flagSet.DurationVar(&writeTimeout, "write-timeout", MustParseDuration("10s"), "write timeout on wire")
 	flagSet.DurationVar(&flushInterval, "flush-interval", MustParseDuration("5s"), "flush interval in which the events are forwareded to the remote agent")
+	flagSet.DurationVar(&reconnectInterval, "reconnect-interval", MustParseDuration("5s"), "interval in which the connection to fluentd is closed and reopened")
 	flagSet.IntVar(&parallelism, "parallelism", 1, "Number of chunks to submit at once (for td output)")
 	flagSet.StringVar(&listenOn, "listen-on", "127.0.0.1:24224", "interface address and port on which the forwarder listens")
 	flagSet.StringVar(&forwardTo, "to", "fluent://127.0.0.1:24225", "host and port to which the events are forwarded")
@@ -207,6 +211,7 @@ func ParseArgs() *FluentdForwarderParams {
 		ConnectionTimeout:   connectionTimeout,
 		WriteTimeout:        writeTimeout,
 		FlushInterval:       flushInterval,
+		ReconnectInterval:   reconnectInterval,
 		Parallelism:         parallelism,
 		ListenOn:            listenOn,
 		OutputType:          outputType,
@@ -316,6 +321,7 @@ func main() {
 			params.ConnectionTimeout,
 			params.WriteTimeout,
 			params.FlushInterval,
+			params.ReconnectInterval,
 			params.JournalGroupPath,
 			params.MaxJournalChunkSize,
 			params.Metadata,

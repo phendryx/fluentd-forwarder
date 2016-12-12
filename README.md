@@ -72,6 +72,15 @@ Command-line Options
   -flush-interval 5s
   ```
 
+* -reconnect-interval
+
+  OPTIONAL
+  Reconnect interval in which the connection to FluentD is closed and reopened (used for environments with changing DNS).
+
+  ```
+  -reconnect-interval 60s
+  ```
+
 * -listen-on
 
   Interface address and port on which the forwarder listens.
