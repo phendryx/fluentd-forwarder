@@ -141,11 +141,8 @@ func (output *ForwardOutput) spawnSpooler() {
 		for {
 			select {
 			case <-reconnectTicker.C:
-				if output.conn != nil {
-					output.logger.Noticef("Disconnecting from %s.", output.bind)
-					output.conn.Close()
-				}
-				output.conn = nil
+				output.logger.Infof("reconnectTicker.C tick...")
+				output.reconnect = true
 			case <-ticker.C:
 				buf := make([]byte, 16777216)
 				output.logger.Notice("Flushing...")
@@ -171,6 +168,15 @@ func (output *ForwardOutput) spawnSpooler() {
 							} else {
 								return err
 							}
+						}
+					}
+					if output.reconnect == true {
+						output.logger.Infof("In reconnect block.")
+						if output.conn != nil {
+							output.logger.Infof("Disconnecting from %s.", output.bind)
+							output.conn.Close()
+							output.conn = nil
+							output.reconnect = false
 						}
 					}
 					return nil
